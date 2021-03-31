@@ -30,6 +30,8 @@
 #include "bsp_driver_sd.h"
 #include "cmsis_os.h"
 
+#include <string.h>
+
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 
@@ -73,6 +75,11 @@ static osMessageQId SDQueueID;
 /* Private function prototypes -----------------------------------------------*/
 static DSTATUS SD_CheckStatus();
 
+
+static union {
+  uint32_t  alignment;
+  uint8_t   buff[SD_DEFAULT_BLOCK_SIZE];
+} AlignedBuffer;
 
 
 /* USER CODE BEGIN beforeFunctionSection */
@@ -156,9 +163,25 @@ DRESULT MMC_disk_read(BYTE *buff, DWORD sector, UINT count)
   DRESULT res = RES_ERROR;
   osEvent event;
   uint32_t timer;
+  uint32_t i;
 #if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
   uint32_t alignedAddr;
 #endif
+
+    //Code trouvé dans ChibiOs => gère le non alignement en 32Bits
+    //nécéssaire au DMA. Sans ça, Des répétitions/décalages apparaissent dans les fichiers
+  	// tous les modulos 512
+	if (((unsigned)buff & 3) != 0) {
+		for (i = 0; i < count; i++) {
+			if (MMC_disk_read(AlignedBuffer.buff, sector, 1)){
+				  return RES_ERROR;
+			}
+			memcpy(buff, AlignedBuffer.buff, SD_DEFAULT_BLOCK_SIZE);
+			buff += SD_DEFAULT_BLOCK_SIZE;
+			sector++;
+		}
+		return(RES_OK);
+	}
 
   if(BSP_SD_ReadBlocks_DMA((uint32_t*)buff,
                            (uint32_t) (sector),
@@ -217,6 +240,7 @@ DRESULT MMC_disk_write(const BYTE *buff, DWORD sector, UINT count)
   DRESULT res = RES_ERROR;
   osEvent event;
   uint32_t timer;
+  uint32_t i;
 
 #if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
   uint32_t alignedAddr;
@@ -227,6 +251,20 @@ DRESULT MMC_disk_write(const BYTE *buff, DWORD sector, UINT count)
   alignedAddr = (uint32_t)buff &  ~0x1F;
   SCB_CleanDCache_by_Addr((uint32_t*)alignedAddr, count*BLOCKSIZE + ((uint32_t)buff - alignedAddr));
 #endif
+
+  //Code trouvé dans ChibiOs => gère le non alignement en 32Bits
+  //nécéssaire au DMA. Sans ça, Des répétitions/décalages apparaissent dans les fichiers
+	// tous les modulos 512
+  if (((unsigned)buff & 3) != 0) {
+	  for (i = 0; i < count; i++) {
+		memcpy(AlignedBuffer.buff, buff, SD_DEFAULT_BLOCK_SIZE);
+		buff += SD_DEFAULT_BLOCK_SIZE;
+		if (MMC_disk_write(AlignedBuffer.buff, sector, 1))
+		  return RES_ERROR;
+		sector++;
+	  }
+	  return(RES_OK);
+  }
 
   if(BSP_SD_WriteBlocks_DMA((uint32_t*)buff,
                             (uint32_t) (sector),

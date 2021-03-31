@@ -234,17 +234,13 @@ void FileManagerCheckFileSize(uint8_t * filename) {
 	 FIL measureFile;
 	 uint8_t buff[1024];
 	 uint32_t i;
-	 int32_t value;
+	 uint8_t value;
 
 	 FRESULT res;
-	 uint64_t prevTick = 0;
-	 uint64_t tick;
-
 
 	 if (FileManagerGetFileSize(filename) <= 0) {
-	 	 _FileManagerInsertBinaryHeader(filename);
+	 	_FileManagerInsertBinaryHeader(filename);
 	 }
-
 
 	 FILE_MANAGER_LOCK(portMAX_DELAY);
 
@@ -260,24 +256,15 @@ void FileManagerCheckFileSize(uint8_t * filename) {
 		 memcpy(&buff[pos], &value, sizeof(value));
 		 pos += sizeof(value);
 
-		 //Vidage intermédiaire du buffer dans le fichier si plus de place pour une ligne
-		 if ( pos >= (sizeof(buff)-1) ) {
-
-			 //Copy 3 "a"
-			 strcpy(buff+387, "aaa");
-
+		 //Write the buffer
+		 if ( pos >= 512 ) {
+			 //Marker @ 512 bytes after the beginning of the file (with an header of 121 bytes).
+			 memcpy(buff+388, "bbb", 3);
 			 if(f_write(&measureFile, (void *)buff, pos-1, (UINT*)&sizeWritted) != FR_OK){
 				_Error_Handler(__FILE__, __LINE__);
-			 }else{
-				 pos -= sizeWritted;
 			 }
 
-
-			 // Check manually with the debugger if is't correct @ address 512
-			 f_close(&measureFile);
-			 f_open(&measureFile, (char *)filename, FA_OPEN_EXISTING | FA_WRITE | FA_READ);
-			 f_read(&measureFile, (void *)buff, 1024, (UINT*)&sizeWritted);
-			 f_close(&measureFile);
+			 pos -= sizeWritted;
 		 }
 	 }
 
@@ -287,7 +274,14 @@ void FileManagerCheckFileSize(uint8_t * filename) {
 	 }
 
 	 CurrentDataFileSize += sizeWritted;
+
 	 f_close(&measureFile);
+	 f_open(&measureFile, (char *)filename, FA_OPEN_EXISTING | FA_WRITE | FA_READ);
+	 //Check manually with the debugger if buff[512] = 'b' or not. If yes => alignment error
+	 f_read(&measureFile, (void *)buff, 1024, (UINT*)&sizeWritted);
+	 f_close(&measureFile);
+
+
 
  CLEAN:
 	 FILE_MANAGER_UNLOCK();
@@ -298,7 +292,7 @@ void FileManagerCheckFileSize(uint8_t * filename) {
 	 FIL file;
 	 //Fake header
 	 uint8_t  buff[] = {"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus egestas lacus vitae libero placerat, aliquam varius sit."};
-	 uint16_t size = sizeof(buff);
+	 uint16_t size = strlen(buff);
 	 uint32_t nbBytes;
 
 	 FILE_MANAGER_LOCK(portMAX_DELAY);

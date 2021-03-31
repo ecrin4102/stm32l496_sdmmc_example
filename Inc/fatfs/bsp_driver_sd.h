@@ -66,6 +66,7 @@
 #define BSP_SD_CardInfo HAL_SD_CardInfoTypeDef
 
 /* Exported constants --------------------------------------------------------*/ 
+
 /**
   * @brief  SD status structure definition  
   */     

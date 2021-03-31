@@ -19,7 +19,8 @@
 //----------------------------------------------------------------------------
 #include "FreeRTOS.h"
 #include "queue.h"
-
+//----------------------------------------------------------------------------
+#include <string.h>
 //##############################################################################
 //                 EXTERNAL variables, functions
 //##############################################################################
@@ -90,7 +91,7 @@ void SuperviserTask(void * argument) {
 	TaskMessage_TypeDef  msg;
 	FileManagerMeasures_TypeDef * tData;
 	//Fake data
-	uint8_t buff[] = {"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ut enim leo. Duis aliquet quam accumsan nisl venenatis, id elementum risus luctus. Duis in velit mattis, porta risus non, scelerisque mauris. In tempus justo sit amet porta bibendum. In hac habitasse platea dictumst. Sed vel dolor purus. Integer facilisis non nisl sed maximus. Integer quis sapien purus. Donec ultricies auctor erat, at aliquet magna accumsan vitae. Nam sollicitudin at nulla vitae vestibulum. Maecenas sollicitudin lacus a mi nullam."};
+	uint8_t buff[] = {"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ut enim leo. Duis aliquet quam accumsan nisl venenatis, id elementum risus luctus. Duis in velit mattis, porta risus non, scelerisque mauris. In tempus justo sit amet porta bibendum. In hac habitasse platea dictumst. Sed vel dolor purus. Integer facilisis non nisl sed maximus. Integer quis sapien purus. Donec ultricies auctor erat, at aliquet magna accumsan vitae. Nam sollicitudin at nulla vitae vestibulum. Maecenas sollicitudin lacus a mi nullam.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ut enim leo. Duis aliquet quam accumsan nisl venenatis, id elementum risus luctus. Duis in velit mattis, porta risus non, scelerisque mauris. In tempus justo sit amet porta bibendum. In hac habitasse platea dictumst. Sed vel dolor purus. Integer facilisis non nisl sed maximus. Integer quis sapien purus. Donec ultricies auctor erat, at aliquet magna accumsan vitae. Nam sollicitudin at nulla vitae vestibulum. Maecenas sollicitudin lacus a mi nullam.Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ut enim leo. Duis aliquet quam accumsan nisl venenatis, id elementum risus luctus. Duis in velit mattis, porta risus non, scelerisque mauris. In tempus justo sit amet porta bibendum. In hac habitasse platea dictumst. Sed vel dolor purus. Integer facilisis non nisl sed maximus. Integer quis sapien purus. Donec ultricies auctor erat, at aliquet magna accumsan vitae. Nam sollicitudin at nulla vitae vestibulum. Maecenas sollicitudin lacus a mi "};
 
 	xTaskNotifyGive(FileManagerTaskHandle);
 	WaitEndInitTask();
@@ -109,12 +110,14 @@ void SuperviserTask(void * argument) {
 			while(1);
 		}
 
-		tData->size = sizeof(buff);
+		tData->size = strlen(buff);
 		tData->data = pvPortMalloc(tData->size);
 		if(tData->data == NULL){
 			_Error_Handler(__FILE__, __LINE__);
 			while(1);
 		}
+
+		memcpy(tData->data, buff, tData->size);
 
 
 		TaskMessageInit(&msg, &SuperviserQueueHandle, MESSAGE_CMD_SAVE_DATA, tData, sizeof(FileManagerMeasures_TypeDef));
